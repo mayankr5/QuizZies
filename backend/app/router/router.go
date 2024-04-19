@@ -14,28 +14,32 @@ func SetupRoutes(app *fiber.App) {
 	user.Post("/login", handlers.Login)
 	user.Get("/logout", handlers.Logout)
 
+	//User Routes
+	// user.Post("/update", handlers.UpdateUser)
+	// user.Delete("/delete", handlers.DeleteUser)
+
 	// Quizzies routes
 	quiz := api.Group("/quiz")
 	quiz.Get("/", handlers.GetAllQuizzes)
 	quiz.Get("/my-quizzes", handlers.GetAllMyQuizzes)
-	quiz.Get("/{id}", handlers.GetQuiz)
+	quiz.Get("/:id", handlers.GetQuiz)
 	quiz.Post("/", handlers.CreateQuiz)
-	quiz.Put("/{id}", handlers.UpdateQuiz)
-	quiz.Delete("/{id}", handlers.DeleteQuiz)
+	quiz.Put("/:id", handlers.UpdateQuiz)
+	quiz.Delete("/:id", handlers.DeleteQuiz)
 
 	// Questions routes
-	question := quiz.Group("/{quiz_id}/question")
+	question := quiz.Group("/:quiz_id/question")
 	question.Get("/", handlers.GetAllQuestion)
-	question.Get("/{id}", handlers.GetQuestion)
+	question.Get("/:id", handlers.GetQuestion)
 	question.Post("/", handlers.AddQuestion)
-	question.Put("/{id}", handlers.UpdateQuestion)
-	question.Delete("/{id}", handlers.DeleteQuestion)
+	question.Put("/:id", handlers.UpdateQuestion)
+	question.Delete("/:id", handlers.DeleteQuestion)
 
 	// Options routes
-	option := question.Group("/{question_id}")
+	option := question.Group("/:ques_id")
 	option.Get("/", handlers.GetAllOptions)
-	option.Get("/{id}", handlers.GetOption)
+	option.Get("/:id", handlers.GetOption)
 	option.Post("/", handlers.AddOption)
-	option.Put("/{id}", handlers.UpdateOption)
-	option.Delete("/{id}", handlers.DeleteOption)
+	option.Put("/:id", handlers.UpdateOption)
+	option.Delete("/:id", handlers.DeleteOption)
 }

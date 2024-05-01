@@ -11,7 +11,7 @@ type Quiz struct {
 	Title       string     `json:"title" gorm:"not null"`
 	Description string     `json:"description"`
 	Category    string     `json:"category" gorm:"not null"`
-	IsPublic    bool       `json:"-" gorm:"default:false"`
+	IsPublic    bool       `json:"is_public" gorm:"default:false"`
 	UserID      uuid.UUID  `json:"user_id" gorm:"not null"`
 	Questions   []Question `gorm:"foreignKey:QuizID;constraint:OnDelete:CASCADE"`
 }

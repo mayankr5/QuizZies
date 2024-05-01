@@ -14,15 +14,17 @@ import (
 )
 
 type LoginRequest struct {
-	Identity string `json:"Identity"`
+	Identity string `json:"identity"`
 	Password string `json:"password"`
 }
 
 type UserResponse struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	Email    string    `json:"email"`
-	Username string    `json:"username"`
+	ID        uuid.UUID `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
+	Username  string    `json:"username"`
+	Phone     string    `json:"phone"`
 }
 
 func hashPassword(password string) (string, error) {
@@ -76,13 +78,13 @@ func Register(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on geting email", err, nil))
 	} else if userModel != nil {
-		return c.Status(fiber.StatusConflict).JSON(utils.APIResponse("error", "email is already taken", errors.New("Duplicating Error"), nil))
+		return c.Status(fiber.StatusConflict).JSON(utils.APIResponse("error", "email is already taken", errors.New("duplication Error"), nil))
 	}
 	userModel, err = getUserByUsername(user.Username)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on geting username", err, nil))
 	} else if userModel != nil {
-		return c.Status(fiber.StatusConflict).JSON(utils.APIResponse("error", "username is already taken", errors.New("Duplicating Error"), nil))
+		return c.Status(fiber.StatusConflict).JSON(utils.APIResponse("error", "username is already taken", errors.New("duplication Error"), nil))
 	}
 
 	hash_pass, err := hashPassword(user.Password)
@@ -90,30 +92,47 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on password hashing", err, nil))
 	}
 
+	access_token, refresh_token, err := utils.GenerateAllTokens(user.Email, user.FirstName, user.LastName, user.ID.String())
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on creating auth token", err, nil))
+	}
+
 	user.ID = uuid.New()
 	user.Password = hash_pass
+	user.AccessToken = access_token
+	user.RefreshToken = refresh_token
 
 	if err := database.DB.Db.Create(&user).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on inserting user", err, nil))
 	}
 
 	userRes := UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-		Name:     user.Name,
-		Email:    user.Email,
-	}
-
-	token, err := "nil", nil
-
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on creating auth token", err, nil))
+		ID:        user.ID,
+		Username:  user.Username,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Phone:     user.Phone,
 	}
 
 	data := fiber.Map{
-		"user":  userRes,
-		"token": token,
+		"user": userRes,
 	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    *refresh_token,
+		HTTPOnly: true,
+		Secure:   true,
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    *access_token,
+		HTTPOnly: true,
+		Secure:   true,
+	})
+
 	return c.Status(fiber.StatusCreated).JSON(utils.APIResponse("success", "user created", nil, data))
 }
 
@@ -136,36 +155,49 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "invalid username or password", errors.New("unauthorised user"), nil))
 	} else if userModel == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "invalid username or password", errors.New("unauthorised user"), nil))
+	} else if !CheckPasswordHash(userCredential.Password, userModel.Password) {
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "invalid username or password", errors.New("unauthorised user"), nil))
 	} else {
 		userRes = UserResponse{
-			ID:       userModel.ID,
-			Name:     userModel.Name,
-			Username: userModel.Username,
-			Email:    userModel.Email,
+			ID:        userModel.ID,
+			FirstName: userModel.FirstName,
+			LastName:  userModel.LastName,
+			Username:  userModel.Username,
+			Email:     userModel.Email,
+			Phone:     userModel.Phone,
 		}
 	}
 
-	if !CheckPasswordHash(userCredential.Password, userModel.Password) {
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "invalid username or password", errors.New("unauthorised user"), nil))
-	}
-
-	token, err := "utils.GenerateToken(utils.User(userRes))", nil
+	access_token, refresh_token, err := utils.GenerateAllTokens(userRes.Email, userRes.FirstName, userRes.LastName, userRes.ID.String())
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on creating auth token", err, nil))
 	}
 
 	data := fiber.Map{
-		"user":  userRes,
-		"token": token,
+		"user": userRes,
 	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    *refresh_token,
+		HTTPOnly: true,
+		Secure:   true,
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    *access_token,
+		HTTPOnly: true,
+		Secure:   true,
+	})
 
 	return c.Status(fiber.StatusOK).JSON(utils.APIResponse("success", "user created", nil, data))
 }
 
 func Logout(c *fiber.Ctx) error {
-	auth_token := c.Locals("auth_token").(models.AuthToken)
-	database.DB.Db.Delete(&auth_token)
-
+	user := c.Locals("user").(models.User)
+	database.DB.Db.Save(&models.User{ID: user.ID, RefreshToken: nil, AccessToken: nil})
+	c.ClearCookie("access_token")
+	c.ClearCookie("refresh_token")
 	return c.Status(fiber.StatusOK).JSON(utils.APIResponse("success", "log out successfully", nil, nil))
 }

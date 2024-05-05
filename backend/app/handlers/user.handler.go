@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/mail"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -121,16 +123,16 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	c.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    *refresh_token,
-		HTTPOnly: true,
-		Secure:   true,
+		Name:  "refresh_token",
+		Value: *refresh_token,
+		// HTTPOnly: true,
+		// Secure:   true,
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:     "access_token",
-		Value:    *access_token,
-		HTTPOnly: true,
-		Secure:   true,
+		Name:  "access_token",
+		Value: *access_token,
+		// HTTPOnly: true,
+		// Secure:   true,
 	})
 
 	return c.Status(fiber.StatusCreated).JSON(utils.APIResponse("success", "user created", nil, data))
@@ -168,7 +170,8 @@ func Login(c *fiber.Ctx) error {
 		}
 	}
 
-	access_token, refresh_token, err := utils.GenerateAllTokens(userRes.Email, userRes.FirstName, userRes.LastName, userRes.ID.String())
+	access_token, refresh_token, err := utils.GenerateAllTokens(userRes.Email, userRes.FirstName, userRes.LastName, (userModel.ID).String())
+	fmt.Println(userModel.ID.String())
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on creating auth token", err, nil))
@@ -179,25 +182,35 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	c.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    *refresh_token,
-		HTTPOnly: true,
-		Secure:   true,
+		Name:  "refresh_token",
+		Value: *refresh_token,
+		// HTTPOnly: true,
+		// Secure:   true,
+		Expires: time.Now().Local().Add(time.Hour * time.Duration(168)),
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:     "access_token",
-		Value:    *access_token,
-		HTTPOnly: true,
-		Secure:   true,
+		Name:  "access_token",
+		Value: *access_token,
+		// HTTPOnly: true,
+		// Secure:   true,
+		Expires: time.Now().Local().Add(time.Hour * time.Duration(24)),
 	})
 
 	return c.Status(fiber.StatusOK).JSON(utils.APIResponse("success", "user created", nil, data))
 }
 
 func Logout(c *fiber.Ctx) error {
-	user := c.Locals("user").(models.User)
-	database.DB.Db.Save(&models.User{ID: user.ID, RefreshToken: nil, AccessToken: nil})
-	c.ClearCookie("access_token")
-	c.ClearCookie("refresh_token")
+	c.Cookie(&fiber.Cookie{
+		Name:    "access_token",
+		Value:   "",
+		Expires: time.Now(),
+		// HTTPOnly: true,
+	})
+	c.Cookie(&fiber.Cookie{
+		Name:    "refresh_token",
+		Value:   "",
+		Expires: time.Now(),
+		// HTTPOnly: true,
+	})
 	return c.Status(fiber.StatusOK).JSON(utils.APIResponse("success", "log out successfully", nil, nil))
 }

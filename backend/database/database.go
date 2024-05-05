@@ -36,7 +36,7 @@ func Connect() error {
 	}
 
 	fmt.Println("Postgres Connnected!")
-	db.AutoMigrate(&models.User{}, &models.Quiz{}, &models.Question{}, &models.Option{})
+	db.AutoMigrate(&models.User{}, &models.Quiz{}, &models.Question{}, &models.Option{}, &models.ScoreBoard{})
 
 	DB = Dbinstance{
 		Db: db,

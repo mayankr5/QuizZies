@@ -19,7 +19,7 @@ func SetupRoutes(app *fiber.App) {
 	//User Routes
 	// user.Post("/update", handlers.UpdateUser)
 	// user.Delete("/delete", handlers.DeleteUser)
-	user.Get("/:user_id", handlers.UserLeaderBoard)
+	user.Get("/leaderboard", middlewares.Authentication, handlers.UserLeaderBoard)
 
 	// Quizzies routes
 	quiz := api.Group("/quizzes")
@@ -29,24 +29,25 @@ func SetupRoutes(app *fiber.App) {
 	quiz.Post("/", middlewares.Authentication, handlers.CreateQuiz)
 	quiz.Put("/:quiz_id", middlewares.Authentication, handlers.UpdateQuiz)
 	quiz.Delete("/:quiz_id", middlewares.Authentication, handlers.DeleteQuiz)
+	quiz.Post("/:quiz_id/submit", middlewares.Authentication, handlers.SubmitQuiz)
 
 	// Questions routes
 	question := quiz.Group("/:quiz_id/questions")
-	question.Get("/", handlers.GetAllQuestion)
-	question.Get("/:question_id", handlers.GetQuestion)
-	question.Post("/", handlers.CreateQuestion)
-	question.Put("/:question_id", handlers.UpdateQuestion)
-	question.Delete("/:question_id", handlers.DeleteQuestion)
+	question.Get("/", middlewares.Authentication, handlers.GetAllQuestion)
+	question.Get("/:question_id", middlewares.Authentication, handlers.GetQuestion)
+	question.Post("/", middlewares.Authentication, handlers.CreateQuestion)
+	question.Put("/:question_id", middlewares.Authentication, handlers.UpdateQuestion)
+	question.Delete("/:question_id", middlewares.Authentication, handlers.DeleteQuestion)
 
 	// Options routes
 	option := question.Group("/:question_id")
-	option.Get("/", handlers.GetAllOptions)
-	option.Get("/:option_id", handlers.GetOption)
-	option.Post("/", handlers.CreateOption)
-	option.Put("/:option_id", handlers.UpdateOption)
-	option.Delete("/:option_id", handlers.DeleteOption)
+	option.Get("/", middlewares.Authentication, handlers.GetAllOptions)
+	option.Get("/:option_id", middlewares.Authentication, handlers.GetOption)
+	option.Post("/", middlewares.Authentication, handlers.CreateOption)
+	option.Put("/:option_id", middlewares.Authentication, handlers.UpdateOption)
+	option.Delete("/:option_id", middlewares.Authentication, handlers.DeleteOption)
 
 	// leaderboard
-	api.Get("/leaderboard/:quiz_id", handlers.LeaderBoard)
+	api.Get("/leaderboard/:quiz_id", middlewares.Authentication, handlers.LeaderBoard)
 
 }

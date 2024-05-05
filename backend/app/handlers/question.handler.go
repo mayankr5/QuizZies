@@ -34,26 +34,24 @@ func GetQuestion(c *fiber.Ctx) error {
 }
 
 func CreateQuestion(c *fiber.Ctx) error {
-	owner := c.Locals("user").(utils.SignedDetails)
-	quiz_id, err := uuid.Parse(c.Params("quiz_id"))
-	if err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(utils.APIResponse("error", "quiz_id is not correct", err, nil))
-	}
+	quiz_id := c.Params("quiz_id")
 
 	quiz := new(models.Quiz)
-	if err := database.DB.Db.Where("quiz_id = ?", quiz_id).First(&quiz).Error; err != nil {
+	owner := c.Locals("user").(utils.SignedDetails)
+
+	if err := database.DB.Db.Where("id = ?", quiz_id).First(&quiz).Error; err != nil {
 		return c.Status(fiber.StatusNoContent).JSON(utils.APIResponse("error", "quiz not found", err, nil))
 	} else if quiz.UserID.String() != owner.ID {
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "you are not quiz owner", errors.New("unauthorized request"), nil))
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "not quiz owner", errors.New("unauthorized request"), nil))
 	}
 
 	var question models.Question
 	if err := c.BodyParser(&question); err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(utils.APIResponse("error", "request is not correct format", err, nil))
+		return c.Status(fiber.StatusBadGateway).JSON(utils.APIResponse("error", "wrong question format", err, nil))
 	}
 
 	question.ID = uuid.New()
-	question.QuizID = quiz_id
+	question.QuizID = uuid.MustParse(quiz_id)
 	if err := database.DB.Db.Create(&question).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on database", err, nil))
 	}
@@ -77,7 +75,7 @@ func UpdateQuestion(c *fiber.Ctx) error {
 
 	// verify is he owner of quiz with quiz_id
 	quiz := new(models.Quiz)
-	if err := database.DB.Db.Where("quiz_id = ?", quiz_id).First(&quiz).Error; err != nil {
+	if err := database.DB.Db.Where("id = ?", quiz_id).First(&quiz).Error; err != nil {
 		return c.Status(fiber.StatusNoContent).JSON(utils.APIResponse("error", "quiz not found", err, nil))
 	} else if quiz.UserID.String() != owner.ID {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "you are not quiz owner", errors.New("unauthorized request"), nil))
@@ -103,7 +101,7 @@ func DeleteQuestion(c *fiber.Ctx) error {
 	var question models.Question
 
 	quiz := new(models.Quiz)
-	if err := database.DB.Db.Where("quiz_id = ?", quiz_id).First(&quiz).Error; err != nil {
+	if err := database.DB.Db.Where("id = ?", quiz_id).First(&quiz).Error; err != nil {
 		return c.Status(fiber.StatusNoContent).JSON(utils.APIResponse("error", "quiz not found", err, nil))
 	} else if quiz.UserID.String() != owner.ID {
 		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "you are not quiz owner", errors.New("unauthorized request"), nil))

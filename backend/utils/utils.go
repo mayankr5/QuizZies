@@ -53,7 +53,7 @@ func GenerateAllTokens(email string, firstName string, lastName string, uid stri
 
 func ValidateToken(signedToken string) (claims *SignedDetails, msg string) {
 
-	token, _ := jwt.ParseWithClaims(
+	token, err := jwt.ParseWithClaims(
 		signedToken,
 		&SignedDetails{},
 		func(token *jwt.Token) (interface{}, error) {
@@ -61,14 +61,15 @@ func ValidateToken(signedToken string) (claims *SignedDetails, msg string) {
 		},
 	)
 
+	if err != nil {
+		return nil, err.Error()
+	}
 	//the token is invalid
-
 	claims, ok := token.Claims.(*SignedDetails)
 	if !ok {
 		msg = fmt.Sprintf("the token is invalid")
 		return nil, msg
 	}
-
 	//the token is expired
 	if claims.ExpiresAt < time.Now().Local().Unix() {
 		msg = fmt.Sprintf("token is expired")

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -58,7 +59,14 @@ func CreateQuiz(c *fiber.Ctx) error {
 	}
 
 	quiz.ID = uuid.New()
-	quiz.UserID = uuid.Must(uuid.FromBytes([]byte(owner.ID)))
+	fmt.Println(owner.ID)
+	id, err := uuid.Parse(owner.ID)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error uuid", err, nil))
+	}
+	quiz.UserID = id
+
 	if err := database.DB.Db.Create(&quiz).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "error on database", err, nil))
 	}

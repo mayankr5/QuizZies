@@ -9,17 +9,14 @@ import (
 
 func Authentication(c *fiber.Ctx) error {
 	accessToken := c.Cookies("access_token")
-
 	if accessToken == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "refresh token not found", errors.New("token are missing"), nil))
+		return c.Status(fiber.StatusUnauthorized).JSON(utils.APIResponse("error", "access token not found", errors.New("token are missing"), nil))
 	}
-
 	claims, err := utils.ValidateToken(accessToken)
 
 	if err != "" {
-		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", err, errors.New("invalid token"), nil))
+		return c.Status(fiber.StatusInternalServerError).JSON(utils.APIResponse("error", "invalid token", errors.New(err), nil))
 	}
-
-	c.Locals("user", claims)
+	c.Locals("user", *claims)
 	return c.Next()
 }
